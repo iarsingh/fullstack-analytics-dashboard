@@ -52,3 +52,7 @@ pytest -q
 ```
 
 Laptop proof. No hosted model. Cluster apply stays false until a human approves.
+
+## Ops plane
+
+Workspaces, tenant isolation, job approval, and audit live under `/v1`. Production apply is refused. See `docs/ARCHITECTURE.md`.

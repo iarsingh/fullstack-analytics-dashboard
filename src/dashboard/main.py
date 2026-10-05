@@ -1,6 +1,8 @@
+from dashboard.ops import router as ops_router
 from fastapi import FastAPI, Header, HTTPException
 from dashboard.store import add, chart, listing, login, seed, user
 app = FastAPI(title="Full-Stack Analytics Dashboard")
+app.include_router(ops_router, prefix="/v1")
 seed()
 
 def current(authorization: str | None):
