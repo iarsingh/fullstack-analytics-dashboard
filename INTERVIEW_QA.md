@@ -13,13 +13,13 @@ I would demonstrate the linked implementation or examples and distinguish that e
 ## 2. How is this repository organized?
 
 - [`src/dashboard/main.py`](src/dashboard/main.py): Implementation or supporting configuration.
+- [`src/dashboard/ops.py`](src/dashboard/ops.py): Implementation or supporting configuration.
 - [`src/dashboard/store.py`](src/dashboard/store.py): Implementation or supporting configuration.
 - [`requirements.txt`](requirements.txt): Implementation or supporting configuration.
 - [`web/src/App.tsx`](web/src/App.tsx): User interface code/assets.
 - [`Dockerfile`](Dockerfile): Container build/service configuration.
-- [`tests/test_dashboard.py`](tests/test_dashboard.py): Executable checks and regression examples.
-- [`.github/workflows/ci.yml`](.github/workflows/ci.yml): GitHub Actions job definitions.
-- [`README.md`](README.md): Project explanations or operating notes.
+- [`Makefile`](Makefile): Implementation or supporting configuration.
+- [`docker-compose.yml`](docker-compose.yml): Container build/service configuration.
 
 [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) contains the component diagram and the implementation walkthrough.
 
@@ -56,10 +56,13 @@ It uses `f'{email}|{exp}'.encode`, `hmac.compare_digest`, `hmac.new`, `hmac.new(
 
 Explicit failure paths include:
 
-- `HTTPException(401, 'missing token')` in [`src/dashboard/main.py`](src/dashboard/main.py#L8).
-- `HTTPException(401, 'invalid token')` in [`src/dashboard/main.py`](src/dashboard/main.py#L11).
-- `HTTPException(401, 'bad credentials')` in [`src/dashboard/main.py`](src/dashboard/main.py#L22).
-- `HTTPException(422, 'name and numeric value required')` in [`src/dashboard/main.py`](src/dashboard/main.py#L29).
+- `HTTPException(401, 'missing token')` in [`src/dashboard/main.py`](src/dashboard/main.py#L10).
+- `HTTPException(401, 'invalid token')` in [`src/dashboard/main.py`](src/dashboard/main.py#L13).
+- `HTTPException(401, 'bad credentials')` in [`src/dashboard/main.py`](src/dashboard/main.py#L24).
+- `HTTPException(422, 'name and numeric value required')` in [`src/dashboard/main.py`](src/dashboard/main.py#L31).
+- `HTTPException(status_code=404, detail='workspace not found')` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L77).
+- `HTTPException(status_code=404, detail='job not found')` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L100).
+- `HTTPException(status_code=404, detail='job not found')` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L109).
 
 I would test both the condition that reaches each exception and the caller that translates it. An explicit raise does not mean every malformed input or dependency failure is handled.
 
@@ -83,17 +86,22 @@ This is a concrete regression example from the repository. Its assertions establ
 
 ## 7. What HTTP interface does the code expose?
 
-- `GET /healthz` → `healthz` in [`src/dashboard/main.py`](src/dashboard/main.py#L15).
-- `POST /login` → `post_login` in [`src/dashboard/main.py`](src/dashboard/main.py#L19).
-- `POST /metrics` → `post_metric` in [`src/dashboard/main.py`](src/dashboard/main.py#L26).
-- `GET /metrics` → `get_metrics` in [`src/dashboard/main.py`](src/dashboard/main.py#L33).
-- `GET /charts` → `get_charts` in [`src/dashboard/main.py`](src/dashboard/main.py#L37).
+- `GET /healthz` → `healthz` in [`src/dashboard/main.py`](src/dashboard/main.py#L17).
+- `POST /login` → `post_login` in [`src/dashboard/main.py`](src/dashboard/main.py#L21).
+- `POST /metrics` → `post_metric` in [`src/dashboard/main.py`](src/dashboard/main.py#L28).
+- `GET /metrics` → `get_metrics` in [`src/dashboard/main.py`](src/dashboard/main.py#L35).
+- `GET /charts` → `get_charts` in [`src/dashboard/main.py`](src/dashboard/main.py#L39).
+- `GET /readyz` → `readyz` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L44).
+- `POST /workspaces` → `create_workspace` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L49).
+- `GET /workspaces` → `list_workspaces` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L66).
 
 These are literal decorators. Application/router prefixes, authentication, and middleware must be checked in the corresponding setup code.
 
-## 8. How would you investigate data ownership and persistence?
+## 8. Where does state live, and what happens with multiple workers?
 
-Trace the data/configuration files and the code that reads or writes them in the component table. Identify which files are examples, which records are mutable, and which external store is actually configured. I would document those facts before discussing retention, backup, or tenant isolation.
+Module-level containers include `_WORKSPACES`, `_JOBS`, `_AUDIT`, `_METRICS` in [`src/dashboard/ops.py`](src/dashboard/ops.py).
+
+These containers belong to a Python process. Inspect which are constant fixtures and which are mutated. Mutable process state needs an explicit shared-storage or synchronization strategy before multiple workers can provide consistent behavior.
 
 ## 9. How would another engineer reproduce your walkthrough?
 
@@ -139,3 +147,9 @@ A useful extension is a table-driven test that covers each condition just below,
 [`web/src/App.tsx`](web/src/App.tsx) defines `App`.
 
 Trace these definitions and imports to explain the module boundary. Relative imports identify project code; package imports should be checked against the nearest manifest.
+
+## 15. What does the operations plane add, and where is its limit?
+
+[`src/dashboard/ops.py`](src/dashboard/ops.py) declares `GET /readyz`, `POST /workspaces`, `GET /workspaces`, `POST /workspaces/{workspace_id}/jobs`, `GET /jobs/{job_id}`, `POST /jobs/{job_id}/approve`, `GET /audit`, `GET /metrics`. Inspect the application’s `include_router` call for its URL prefix.
+
+Its state containers are `_WORKSPACES`, `_JOBS`, `_AUDIT`, `_METRICS`. The job-approval handler defines whether a target is accepted or refused; check that branch and the associated tests instead of treating a recorded job as a successful infrastructure apply.
