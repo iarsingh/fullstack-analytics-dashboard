@@ -91,9 +91,9 @@ This is a concrete regression example from the repository. Its assertions establ
 - `POST /metrics` → `post_metric` in [`src/dashboard/main.py`](src/dashboard/main.py#L28).
 - `GET /metrics` → `get_metrics` in [`src/dashboard/main.py`](src/dashboard/main.py#L35).
 - `GET /charts` → `get_charts` in [`src/dashboard/main.py`](src/dashboard/main.py#L39).
-- `GET /readyz` → `readyz` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L44).
-- `POST /workspaces` → `create_workspace` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L49).
-- `GET /workspaces` → `list_workspaces` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L66).
+- `GET /readyz` → `readyz` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L74).
+- `POST /workspaces` → `create_workspace` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L80).
+- `GET /workspaces` → `list_workspaces` in [`src/dashboard/ops.py`](src/dashboard/ops.py#L98).
 
 These are literal decorators. Application/router prefixes, authentication, and middleware must be checked in the corresponding setup code.
 
